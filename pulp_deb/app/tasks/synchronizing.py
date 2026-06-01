@@ -1171,16 +1171,26 @@ class DebFirstStage(Stage):
         ):
             try:
                 source_dir = source_paragraph["Directory"]
-                source_relpath = os.path.join(source_dir, "blah")
                 serializer = DscFile822Serializer.from822(data=source_paragraph)
                 serializer.is_valid(raise_exception=True)
                 source_content_unit = SourcePackage(
-                    relative_path=source_relpath,
+                    relative_path="",
                     **serializer.validated_data,
+                )
+                source_files = source_paragraph["Checksums-Sha256"]
+                source_dsc_files = [
+                    source_file
+                    for source_file in source_files
+                    if source_file["name"] == source_content_unit.derived_dsc_filename()
+                ]
+                if len(source_dsc_files) != 1:
+                    raise KeyError
+                source_content_unit.relative_path = os.path.join(
+                    source_dir, source_dsc_files[0]["name"]
                 )
                 # Handle the dsc file content
                 source_das = []
-                for source_file in source_paragraph["Checksums-Sha256"]:
+                for source_file in source_files:
                     source_relpath = os.path.join(source_dir, source_file["name"])
                     log.debug(_("Downloading dsc content file {}.").format(source_file["name"]))
 
